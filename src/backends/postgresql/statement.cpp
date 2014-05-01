@@ -17,11 +17,6 @@
 #include <ctime>
 #include <sstream>
 
-#ifdef SOCI_POSTGRESQL_NOPARAMS
-#ifndef SOCI_POSTGRESQL_NOBINDBYNAME
-#define SOCI_POSTGRESQL_NOBINDBYNAME
-#endif // SOCI_POSTGRESQL_NOBINDBYNAME
-#endif // SOCI_POSTGRESQL_NOPARAMS
 
 #ifdef _MSC_VER
 #pragma warning(disable:4355)
@@ -74,9 +69,6 @@ void postgresql_statement_backend::clean_up()
 void postgresql_statement_backend::prepare(std::string const & query,
     statement_type stType)
 {
-#ifdef SOCI_POSTGRESQL_NOBINDBYNAME
-    query_ = query;
-#else
     // rewrite the query by transforming all named parameters into
     // the postgresql_ numbers ones (:abc -> $1, etc.)
 
@@ -175,9 +167,6 @@ void postgresql_statement_backend::prepare(std::string const & query,
         query_ += ss.str();
     }
 
-#endif // SOCI_POSTGRESQL_NOBINDBYNAME
-
-#ifndef SOCI_POSTGRESQL_NOPREPARE
 
     if (stType == st_repeatable_query)
     {
@@ -197,8 +186,6 @@ void postgresql_statement_backend::prepare(std::string const & query,
     }
 
     stType_ = stType;
-
-#endif // SOCI_POSTGRESQL_NOPREPARE
 }
 
 statement_backend::exec_fetch_result
@@ -289,18 +276,6 @@ postgresql_statement_backend::execute(int number)
                     }
                 }
 
-#ifdef SOCI_POSTGRESQL_NOPARAMS
-
-                throw soci_error("Queries with parameters are not supported.");
-
-#else
-
-#ifdef SOCI_POSTGRESQL_NOPREPARE
-
-                result_.reset(PQexecParams(session_.conn_, query_.c_str(),
-                    static_cast<int>(paramValues.size()),
-                    NULL, &paramValues[0], NULL, NULL, 0));
-#else
                 if (stType_ == st_repeatable_query)
                 {
                     // this query was separately prepared
@@ -319,10 +294,6 @@ postgresql_statement_backend::execute(int number)
                         static_cast<int>(paramValues.size()),
                         NULL, &paramValues[0], NULL, NULL, 0));
                 }
-
-#endif // SOCI_POSTGRESQL_NOPREPARE
-
-#endif // SOCI_POSTGRESQL_NOPARAMS
 
                 if (numberOfExecutions > 1)
                 {
@@ -352,10 +323,6 @@ postgresql_statement_backend::execute(int number)
             // there are no use elements
             // - execute the query without parameter information
 
-#ifdef SOCI_POSTGRESQL_NOPREPARE
-
-            result_.reset(PQexec(session_.conn_, query_.c_str()));
-#else
             if (stType_ == st_repeatable_query)
             {
                 // this query was separately prepared
@@ -368,7 +335,6 @@ postgresql_statement_backend::execute(int number)
                 result_.reset(PQexec(session_.conn_, query_.c_str()));
             }
 
-#endif // SOCI_POSTGRESQL_NOPREPARE
         }
     }
     else
