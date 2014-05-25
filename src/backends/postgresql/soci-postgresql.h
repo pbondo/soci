@@ -59,6 +59,8 @@ public:
     explicit postgresql_result(PGresult* result = NULL)
     {
       init(result);
+      singleline_ = false;
+      actual_count_ = 0;
     }
 
     // Frees any currently stored result pointer and takes ownership of the
@@ -67,6 +69,34 @@ public:
     {
       free();
       init(result);
+    }
+
+
+    void reset(int singleline, PGconn *conn)
+    {
+        free();
+        init(NULL);
+        this->singleline_ = singleline;
+        if(singleline)
+        {
+            int res = PQsetSingleRowMode(conn);
+            if (res > 0)
+            {
+                // Activated correctly.
+                this->singleline_ = true;
+                init(PQgetResult(conn));
+            }
+            else
+            {
+                this->singleline_ = false;
+            }
+        }
+    }
+
+    void nextline(PGconn *conn)
+    {
+        free();
+        init(PQgetResult(conn));
     }
 
     // Check whether the status is PGRES_COMMAND_OK and throw an exception if
@@ -98,6 +128,9 @@ public:
 
     // Dtor frees the result.
     ~postgresql_result() { free(); }
+
+    bool singleline_;
+    int actual_count_;
 
 private:
     void init(PGresult* result)
@@ -313,6 +346,7 @@ struct postgresql_session_backend : details::session_backend
     virtual void begin();
     virtual void commit();
     virtual void rollback();
+    virtual void set_single_row_mode(bool on);
 
     void deallocate_prepared_statement(const std::string & statementName);
 
@@ -331,6 +365,7 @@ struct postgresql_session_backend : details::session_backend
 
     int statementCount_;
     PGconn * conn_;
+    bool singleline_;
 };
 
 

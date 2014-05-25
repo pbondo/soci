@@ -31,7 +31,7 @@ using namespace soci::details;
 
 postgresql_session_backend::postgresql_session_backend(
     connection_parameters const& parameters)
-    : statementCount_(0)
+    : statementCount_(0),singleline_(false)
 {
     PGconn* conn = PQconnectdb(parameters.get_connect_string().c_str());
     if (0 == conn || CONNECTION_OK != PQstatus(conn))
@@ -127,4 +127,9 @@ postgresql_rowid_backend * postgresql_session_backend::make_rowid_backend()
 postgresql_blob_backend * postgresql_session_backend::make_blob_backend()
 {
     return new postgresql_blob_backend(*this);
+}
+
+void postgresql_session_backend::set_single_row_mode(bool on)
+{
+    singleline_ = on;
 }
