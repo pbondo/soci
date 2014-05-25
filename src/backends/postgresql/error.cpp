@@ -47,6 +47,12 @@ details::postgresql_result::check_for_data(char const* errMsg) const
         case PGRES_TUPLES_OK:
             return true;
 
+        case PGRES_SINGLE_TUPLE:
+            if (this->singleline_)
+            {
+                return true;
+            }
+
         default:
             // Some of the other status codes are not really errors but we're
             // not prepared to handle them right now and shouldn't ever receive

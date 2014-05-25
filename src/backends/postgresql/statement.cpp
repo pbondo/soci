@@ -279,11 +279,21 @@ postgresql_statement_backend::execute(int number)
                 if (stType_ == st_repeatable_query)
                 {
                     // this query was separately prepared
-
-                    result_.reset(PQexecPrepared(session_.conn_,
-                        statementName_.c_str(),
-                        static_cast<int>(paramValues.size()),
-                        &paramValues[0], NULL, NULL, 0));
+                    if (session_.singleline_)
+                    {
+                        session_.singleline_ = false;
+                        result_.reset(PQsendQueryPrepared(session_.conn_,
+                            statementName_.c_str(),
+                            static_cast<int>(paramValues.size()),
+                            &paramValues[0], NULL, NULL, 0), session_.conn_);
+                    }
+                    else
+                    {
+                        result_.reset(PQexecPrepared(session_.conn_,
+                            statementName_.c_str(),
+                            static_cast<int>(paramValues.size()),
+                            &paramValues[0], NULL, NULL, 0));
+                    }
                 }
                 else // stType_ == st_one_time_query
                 {
@@ -326,9 +336,17 @@ postgresql_statement_backend::execute(int number)
             if (stType_ == st_repeatable_query)
             {
                 // this query was separately prepared
-
-                result_.reset(PQexecPrepared(session_.conn_,
-                    statementName_.c_str(), 0, NULL, NULL, NULL, 0));
+                if (session_.singleline_) // ToDo: Define single line mode
+                {
+                    session_.singleline_ = false;
+                    result_.reset(PQsendQueryPrepared(session_.conn_,
+                        statementName_.c_str(), 0, NULL, NULL, NULL, 0), session_.conn_);
+                }
+                else
+                {
+                    result_.reset(PQexecPrepared(session_.conn_,
+                        statementName_.c_str(), 0, NULL, NULL, NULL, 0));
+                }
             }
             else // stType_ == st_one_time_query
             {
@@ -343,8 +361,10 @@ postgresql_statement_backend::execute(int number)
         // from the row description can be performed only once.
         // If the same statement is re-executed,
         // it will be *really* re-executed, without reusing existing data.
-
-        justDescribed_ = false;
+        if (!result_.singleline_) // ToDo: Check if justDescribed_ not being reset is a problem for singleline mode.
+        {
+            justDescribed_ = false;
+        }
     }
 
     if (result_.check_for_data("Cannot execute query."))
@@ -385,6 +405,25 @@ postgresql_statement_backend::fetch(int number)
     // function, and the actual consumption of this data will take place
     // in the postFetch functions, called for each into element.
     // Here, we only prepare for this to happen (to emulate "the Oracle way").
+
+    if (result_.singleline_)
+    {
+        if (++result_.actual_count_ > 2)
+        {
+            result_.nextline(session_.conn_);
+        }
+        if (result_.check_for_data("Cannot execute query."))
+        {
+            currentRow_ = 0;
+            numberOfRows_ = PQntuples(result_);;
+            rowsToConsume_ = 0; // This value is not used in singleline mode.
+            if (numberOfRows_ > 0)
+            {
+                return ef_success;
+            }
+        }
+        return ef_no_data;
+    }
 
     // forward the "cursor" from the last fetch
     currentRow_ += rowsToConsume_;
