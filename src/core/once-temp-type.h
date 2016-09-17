@@ -59,6 +59,43 @@ public:
         return *this;
     }
 
+#if __cplusplus >= 201402L
+
+private:
+
+    template<std::size_t> struct int_{};
+
+    template <typename T0, typename... Trest>
+    once_temp_type &do_use1(std::tuple<T0,Trest...> const &uc, int_<0>)
+    {
+        auto v = std::get<0>(uc);
+        const details::use_container<T0, no_indicator> aa(v, std::string());
+        rcst_->exchange(aa);
+        return *this;
+    }
+
+    template <typename T0, typename... Trest, std::size_t I>
+    once_temp_type &do_use1(std::tuple<T0,Trest...> const &uc, int_<I>)
+    {
+        do_use1(uc, int_<I-1>());
+        auto v = std::get<I>(uc);
+        const details::use_container<typename std::tuple_element<I, std::tuple<T0,Trest...>>::type, no_indicator> aa(v, std::string());
+        rcst_->exchange(aa);
+        return *this;
+    }
+
+public:
+
+    // This will allow std::tuple<int,.....> x; , use(x)
+    template <typename T0, typename... Trest>
+    once_temp_type &operator,(use_container<std::tuple<T0,Trest...>, no_indicator> const &uc)
+    {
+        do_use1( uc.t, int_<sizeof...(Trest)>());
+        return *this;
+    }
+
+#endif
+
 private:
     ref_counted_statement * rcst_;
 };

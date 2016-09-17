@@ -518,6 +518,7 @@ void postgresql_statement_backend::describe_column(int colNum, data_type & type,
     case 114:  // json
     case 17: // bytea
     case 2950: // uuid
+    case 1186: // interval
         type = dt_string;
         break;
 

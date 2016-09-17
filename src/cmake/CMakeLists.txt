@@ -8,6 +8,7 @@
 # http://www.boost.org/LICENSE_1_0.txt)
 #
 ###############################################################################
+cmake_minimum_required(VERSION 3.0)
 
 # install the cmake modules
 file(GLOB SOCI_CMAKE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.cmake")
