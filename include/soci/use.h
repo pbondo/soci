@@ -18,8 +18,11 @@ namespace soci
 
 namespace details
 {
+
+struct use_container_base{};
+
 template <typename T, typename Indicator>
-struct use_container
+struct use_container : public use_container_base
 {
     use_container(T &_t, Indicator &_ind, const std::string &_name)
         : t(_t), ind(_ind), name(_name) {}
@@ -33,7 +36,7 @@ private:
 
 typedef void no_indicator;
 template <typename T>
-struct use_container<T, no_indicator>
+struct use_container<T, no_indicator> : public use_container_base
 {
     use_container(T &_t, const std::string &_name)
         : t(_t), name(_name) {}
@@ -42,6 +45,13 @@ struct use_container<T, no_indicator>
     const std::string &name;
 private:
     SOCI_NOT_ASSIGNABLE(use_container)
+};
+
+template <typename T>
+struct c_use_container : public use_container<T, no_indicator>
+{
+    c_use_container(T const &_t, const std::string &_name)
+        : use_container<T, no_indicator>( (T&)_t, _name){}
 };
 
 } // namespace details
